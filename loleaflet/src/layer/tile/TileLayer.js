@@ -1310,6 +1310,9 @@ L.TileLayer = L.GridLayer.extend({
 		}
 
 		if (textMsg.match('EMPTY') || !this._map.isPermissionEdit()) {
+			if (!this._isCellCursorZero(this._cellCursor)) {
+				this._tmpCellCursor = this._cellCursor;
+			}
 			this._cellCursorTwips = new L.Bounds(new L.Point(0, 0), new L.Point(0, 0));
 			this._cellCursor = L.LatLngBounds.createDefault();
 			this._cellCursorXY = new L.Point(-1, -1);
@@ -1355,6 +1358,16 @@ L.TileLayer = L.GridLayer.extend({
 
 		// Remove input help if there is any:
 		this._removeInputHelpMarker();
+	},
+
+	_isCellCursorZero: function(cellCursor) {
+		var northEast = cellCursor.getNorthEast();
+		var southWest = cellCursor.getSouthWest();
+		if ((northEast.lat === 0 && northEast.lng === 0) && (southWest.lat === 0 && southWest.lng === 0)) {
+			return true;
+		} else {
+			return false;
+		}
 	},
 
 	_removeInputHelpMarker: function() {

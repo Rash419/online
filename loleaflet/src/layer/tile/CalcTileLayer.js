@@ -34,7 +34,11 @@ L.CalcTileLayer = L.CanvasTileLayer.extend({
 			}
 
 			if (!annotation) {
-				comment.cellPos = this._cellCursor;
+				if (this._map.context.context === 'EditCell') {
+					comment.cellPos = this._tmpCellCursor;
+				} else {
+					comment.cellPos = this._cellCursor;
+				}
 				annotation = this.createAnnotation(comment);
 				annotation._annotation._tag = annotation;
 				this.showAnnotation(annotation);
