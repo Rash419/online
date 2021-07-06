@@ -100,6 +100,8 @@ function typeIntoFormulabar(text) {
 	//	 .should('be.visible');
 	// with core co-2021 cursor is rendered on the canvas
 
+	helper.waitUntilIdle('#toolbar-up');
+
 	helper.doIfOnMobile(function() {
 		cy.get('#tb_actionbar_item_acceptformula')
 			.should('be.visible');
@@ -107,6 +109,8 @@ function typeIntoFormulabar(text) {
 		cy.get('#tb_actionbar_item_cancelformula')
 			.should('be.visible');
 	});
+
+	helper.waitUntilIdle('body',undefined);
 
 	cy.get('body')
 		.type(text);
