@@ -329,7 +329,7 @@ describe('Top toolbar tests.', function() {
 
 	});
 
-	it('Apply font style.', function() {
+	it.skip('Apply font style.', function() {
 		cy.get('#tb_editbar_item_fonts')
 			.click();
 
