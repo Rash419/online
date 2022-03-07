@@ -10,6 +10,7 @@
 #include "COOLWSD.hpp"
 #include "RequestDetails.hpp"
 #include "common/Log.hpp"
+#include "Storage.hpp"
 
 #include <Poco/URI.h>
 #include "Exceptions.hpp"
@@ -283,15 +284,22 @@ Poco::URI RequestDetails::sanitizeURI(const std::string& uri)
 
 std::string RequestDetails::getDocKey(const Poco::URI& uri)
 {
-    // If multiple host-names are used to access us, then
-    // they must be aliases. Permission to access aliased hosts
-    // is checked at the point of accepting incoming connections.
-    // At this point storing the hostname artificially discriminates
-    // between aliases and forces same document (when opened from
-    // alias hosts) to load as separate documents and sharing doesn't
-    // work. Worse, saving overwrites one another.
     std::string docKey;
-    Poco::URI::encode(uri.getPath(), "", docKey);
+    std::string uriHost = uri.getHost();
+    std::string uriPort = std::to_string(uri.getPort());
+
+    std::cerr << "Uri" << uri.toString() << "\n";
+    std::cerr << "Before: "<< "\n";
+    std::cerr << "uriHost: " << uriHost << "\n";
+    std::cerr << "uriPort: " << uriPort << "\n";
+
+    StorageBase::getHostAndPort(uriHost, uriPort);
+
+    std::cerr << "After: " << "\n";
+    std::cerr << "uriHost: " << uriHost << "\n";
+    std::cerr << "uriPort: " << uriPort << "\n";
+
+    Poco::URI::encode(uri.getScheme() + "://" + uriHost + ":" + uriPort + uri.getPath(), "",docKey);
     LOG_INF("DocKey from URI [" << uri.toString() << "] => [" << docKey << ']');
     return docKey;
 }
