@@ -24,15 +24,16 @@ var AdminClusterOverview = AdminSocketBase.extend({
 		left: 25
 	},
 
+    _interval: 5000,
+
     addStat: function(serverId) {
-        var interval = 5;
         var offset = 0;
         var memData = [];
         var cpuData = [];
         for (var i = 0; i < this._size ; i++) {
 			memData.unshift({time: -(offset), value: 0});
 			cpuData.unshift({time: -(offset), value: 0});
-			offset += interval;
+			offset += this._interval;
 		}
         this._statsData.set(serverId, {
             mem:memData,
@@ -92,8 +93,8 @@ var AdminClusterOverview = AdminSocketBase.extend({
         mainTile.appendChild(cpuSubTitle);
 
         var data = this._statsData.get(server.serverId);
-        var tileParent = this.createGraph('cpu', data.cpu, server.cpu);
-        mainTile.appendChild(tileParent);
+        var cpuGraph = this.createGraph('cpu', data.cpu, server.cpu);
+        mainTile.appendChild(cpuGraph);
 
         var memorySubTitle = document.createElement('p');
         memorySubTitle.className = 'tile is-fullwidth subtitle';
@@ -102,16 +103,16 @@ var AdminClusterOverview = AdminSocketBase.extend({
 
         mainTile.appendChild(memorySubTitle);
 
-        tileParent = this.createGraph('mem',  data.mem, server.memory);
-        mainTile.appendChild(tileParent);
+        var memGraph = this.createGraph('mem',  data.mem, server.memory);
+        mainTile.appendChild(memGraph);
 
         var horizontalTile = document.createElement('div');
         horizontalTile.className = 'tile is-fullwidth';
-        tileParent = this.createParentTile(_('RouteToken'), server.routeToken, 'route');
-        horizontalTile.appendChild(tileParent);
+        var routeTokenTile = this.createTile(_('RouteToken'), server.routeToken, 'route');
+        horizontalTile.appendChild(routeTokenTile);
 
-        tileParent = this.createParentTile(_('ServerId'), server.serverId, 'serverId');
-        horizontalTile.appendChild(tileParent);
+        var serverIdTile = this.createTile(_('ServerId'), server.serverId, 'serverId');
+        horizontalTile.appendChild(serverIdTile);
 
         cardContent.appendChild(mainTile);
         cardContent.appendChild(horizontalTile);
@@ -179,14 +180,12 @@ var AdminClusterOverview = AdminSocketBase.extend({
         var graphChild = document.createElement('div');
         graphChild.className = 'tile is-child';
 
+        var spanforBullet = document.createElement('span');
+        spanforBullet.textContent = '● ';
         if (graphName == 'cpu') {
             var cpuStat = document.createElement('p');
             cpuStat.className = 'pb-1 has-text-right';
-
-            var spanforBullet = document.createElement('span');
             spanforBullet.style = 'color:blue';
-            spanforBullet.textContent = '● ';
-
             var spanforText = document.createElement('span');
             spanforText.id = 'cpu-usage';
             spanforText.textContent = currData + '%';
@@ -197,11 +196,7 @@ var AdminClusterOverview = AdminSocketBase.extend({
         } else if (graphName == 'mem') {
             var memStat = document.createElement('p');
             memStat.className = 'pb-1 has-text-right';
-
-            var spanforBullet = document.createElement('span');
             spanforBullet.style = 'color:green';
-            spanforBullet.textContent = '● ';
-
             var spanforText = document.createElement('span');
             spanforText.id = 'mem-con';
             spanforText.textContent = currData + ' MB';
@@ -344,7 +339,7 @@ var AdminClusterOverview = AdminSocketBase.extend({
         return table;
     },
 
-    createParentTile: function(heading, value, id) {
+    createTile: function(heading, value, id) {
         var tile = document.createElement('div');
         tile.className = 'tile has-text-centered is-fullwidth';
 
@@ -463,7 +458,6 @@ var AdminClusterOverview = AdminSocketBase.extend({
             }
             var serverId = tokens[0];
             var pid = tokens[1];
-            var filename = tokens[2];
             var cardId = 'card-' + serverId;
             var card = document.getElementById(cardId);
             if (card) {
@@ -527,7 +521,7 @@ var AdminClusterOverview = AdminSocketBase.extend({
         var that = this;
         setInterval(function () {
             that.socket.send('stats');
-        }, 5000);
+        }, this._interval);
     }
 });
 
