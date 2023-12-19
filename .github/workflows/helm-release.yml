@@ -32,7 +32,7 @@ jobs:
 
       - name: Run chart-releaser
         # for use with make-release-latest
-        uses: helm/chart-releaser-action@v1
+        uses: helm/chart-releaser-action@v1.6.0
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           CR_SKIP_EXISTING: true
@@ -55,5 +55,6 @@ jobs:
             if [ -z "${pkg:-}" ]; then
               break
             fi
+            echo "Pushing package: ${pkg} to ${GITHUB_REPOSITORY_OWNER} repository"
             helm push "${pkg}" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts"
           done
