@@ -356,7 +356,8 @@ void AdminSocketHandler::handleMessage(const std::vector<char> &payload)
             oss << "\"afterSave\"" << ":false,";
             if (docStatus == "unsaved" && !model.isDocSaved(dockey))
             {
-                COOLWSD::autoSave(dockey);
+                LOG_DBG("Saving document with DocKey [" << dockey << "] for migration");
+                COOLWSD::autoSaveAndStop(dockey, "migrating");
                 oss << "\"saved\"" << ":false,";
             }
             else if ((docStatus == "readonly" && model.isDocReadOnly(dockey)) ||
@@ -367,6 +368,8 @@ void AdminSocketHandler::handleMessage(const std::vector<char> &payload)
             oss << "\"routeToken\"" << ':' << '"' << routeToken << '"' << ',';
             oss << "\"serverId\"" << ':' << '"' << serverId << '"' << '}';
             COOLWSD::alertUserInternal(dockey, oss.str());
+            LOG_DBG("Migrating saved or readonly document with DocKey [" << dockey << ']');
+            COOLWSD::closeDocument(dockey, "migrating");
         }
         else
         {

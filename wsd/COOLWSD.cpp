@@ -3494,6 +3494,18 @@ void COOLWSD::autoSave(const std::string& docKey)
     }
 }
 
+void COOLWSD::autoSaveAndStop(const std::string& docKey, const std::string& reason)
+{
+    std::unique_lock<std::mutex> docBrokersLock(DocBrokersMutex);
+    auto docBrokerIt = DocBrokers.find(docKey);
+    if (docBrokerIt != DocBrokers.end())
+    {
+        std::shared_ptr<DocumentBroker> docBroker = docBrokerIt->second;
+        docBroker->addCallback(
+            [docBroker, reason]() { docBroker->autoSaveAndStop(reason); });
+    }
+}
+
 void COOLWSD::setLogLevelsOfKits(const std::string& level)
 {
     std::lock_guard<std::mutex> docBrokersLock(DocBrokersMutex);
