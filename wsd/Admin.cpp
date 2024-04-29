@@ -365,6 +365,8 @@ void AdminSocketHandler::handleMessage(const std::vector<char> &payload)
             oss << "\"routeToken\"" << ':' << '"' << routeToken << '"' << ',';
             oss << "\"serverId\"" << ':' << '"' << serverId << '"' << '}';
             COOLWSD::alertUserInternal(dockey, oss.str());
+            if (SigUtil::getShutdownRequestFlag())
+                COOLWSD::setMigrationMsgReceived(dockey);
         }
         else
         {
@@ -408,6 +410,10 @@ void AdminSocketHandler::handleMessage(const std::vector<char> &payload)
             LOG_DBG("Invalid auth token");
             sendTextFrame("InvalidAuthToken " + id);
         }
+    }
+    else if(tokens.equals(0, "closemonitor"))
+    {
+       _admin->setCloseMonitorFlag();
     }
 }
 
@@ -685,6 +691,30 @@ void Admin::pollingThread()
         LOG_TRC("Admin poll for " << timeout);
         poll(timeout); // continue with ms for admin, settings etc.
     }
+
+    if (!COOLWSD::IndirectionServerEnabled)
+        return;
+
+    _model.sendShutdownReceivedMsg();
+
+    const auto static closeMonitorMsgTimeout = std::chrono::microseconds(
+        COOLWSD::getConfigValue<int>("indirection_endpoint.migration_timeout_secs", 180) * 1000000);
+
+    std::chrono::time_point<std::chrono::steady_clock> closeMonitorMsgStartTime =
+        std::chrono::steady_clock::now();
+    while (!_closeMonitor)
+    {
+        LOG_DBG("Waiting for migration to complete before closing the monitor");
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsedMicroS =
+            std::chrono::duration_cast<std::chrono::microseconds>(now - closeMonitorMsgStartTime);
+        if (elapsedMicroS > closeMonitorMsgTimeout)
+        {
+            LOG_WRN("Timeout waiting for 'closemonitor' message");
+            break;
+        }
+        poll(std::chrono::seconds(1));
+    }
 }
 
 void Admin::modificationAlert(const std::string& docKey, pid_t pid, bool value){
@@ -899,6 +929,11 @@ void Admin::addLostKitsTerminated(unsigned lostKitsTerminated)
 void Admin::routeTokenSanityCheck()
 {
     addCallback([this] { _model.routeTokenSanityCheck(); });
+}
+
+void Admin::sendShutdownReceivedMsg()
+{
+    addCallback([this] { _model.sendShutdownReceivedMsg(); });
 }
 
 void Admin::notifyForkit()
