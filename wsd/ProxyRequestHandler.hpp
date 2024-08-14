@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include <Poco/MemoryStream.h>
+#include <Poco/URI.h>
 #include <string>
 #include "Socket.hpp"
 
@@ -19,7 +21,10 @@ class ProxyRequestHandler
 public:
     static void handleRequest(const std::string& relPath,
                               const std::shared_ptr<StreamSocket>& socket,
-                              const std::string& serverUri);
+                              const std::string& serverUri,
+                              Poco::MemoryInputStream& message,
+                              const std::string& verb);
+
     static std::string getProxyRatingServer() { return ProxyRatingServer; }
 
 private:

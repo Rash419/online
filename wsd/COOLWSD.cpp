@@ -4321,22 +4321,42 @@ private:
             {
                 // Unit testing, nothing to do here
             }
-            else if (requestDetails.equals(RequestDetails::Field::Type, "browser") || requestDetails.equals(RequestDetails::Field::Type, "wopi"))
+            else if (requestDetails.equals(RequestDetails::Field::Type, "browser") ||
+                     requestDetails.equals(RequestDetails::Field::Type, "wopi"))
             {
+
+                std::string protocol = "http";
+                if (socket->sniffSSL())
+                    protocol = "https";
+
+                Poco::URI requestUri(protocol + "://" + request.getHost() + request.getURI());
+                const std::string& path = requestUri.getPath();
+                bool versionMismatch = false;
+                if ((path.find("browser/" COOLWSD_VERSION_HASH "/") == std::string::npos &&
+                     path.find("browser/" + Util::getCoolVersionHash() + "/") == std::string::npos) &&
+                    path.find("admin/") == std::string::npos)
+                {
+                    LOG_DBG("Client - server version mismatch, proxy request to different server "
+                            "Expected: " COOLWSD_VERSION_HASH
+                            "; Actual URI path with version hash: "
+                            << path);
+                    versionMismatch = true;
+                }
+
                 // File server
                 assert(socket && "Must have a valid socket");
                 constexpr auto ProxyRemote = "/remote/";
                 constexpr auto ProxyRemoteLen = sizeof(ProxyRemote) - 1;
                 constexpr auto ProxyRemoteStatic = "/remote/static/";
-                const auto uri = requestDetails.getURI();
-                const auto pos = uri.find(ProxyRemoteStatic);
+                const auto pos = path.find(ProxyRemoteStatic);
                 if (pos != std::string::npos)
                 {
-                    if (Util::endsWith(uri, "lokit-extra-img.svg"))
+                    if (Util::endsWith(path, "lokit-extra-img.svg"))
                     {
                         ProxyRequestHandler::handleRequest(
-                            uri.substr(pos + ProxyRemoteLen), socket,
-                            ProxyRequestHandler::getProxyRatingServer());
+                            path.substr(pos + ProxyRemoteLen), socket,
+                            ProxyRequestHandler::getProxyRatingServer(), message,
+                            http::Request::VERB_GET);
                     }
 #if ENABLE_FEATURE_LOCK
                     else
@@ -4347,11 +4367,67 @@ private:
                         {
                             const std::string& serverUri =
                                 unlockImageUri.getScheme() + "://" + unlockImageUri.getAuthority();
-                            ProxyRequestHandler::handleRequest(uri.substr(pos + sizeof("/remote/static") - 1),
-                                                               socket, serverUri);
+                            ProxyRequestHandler::handleRequest(
+                                path.substr(pos + sizeof("/remote/static") - 1), socket, serverUri,
+                                message, http::Request::VERB_GET);
                         }
                     }
 #endif
+                }
+                else if (COOLWSD::IndirectionServerEnabled && versionMismatch &&
+                         Admin::instance().getRollingUpdateStatus())
+                {
+                    std::string searchString = "/browser/";
+                    size_t startHashPos = path.find(searchString);
+                    if (startHashPos != std::string::npos)
+                    {
+                        startHashPos += searchString.length();
+                        size_t endHashPos = path.find('/', startHashPos);
+
+                        std::string gitHash;
+                        if (endHashPos != std::string::npos)
+                        {
+                            gitHash = path.substr(startHashPos, endHashPos - startHashPos);
+                        }
+                        else
+                        {
+                            gitHash = path.substr(startHashPos);
+                        }
+
+                        std::string hash(gitHash);
+                        hash.resize(std::min(8, (int)hash.length()));
+                        std::string routeToken = Admin::instance().getBuddyServer(hash);
+                        if (!routeToken.empty())
+                        {
+                            Poco::URI::QueryParameters params = requestUri.getQueryParameters();
+                            const auto routeTokenIt =
+                                std::find_if(params.begin(), params.end(),
+                                             [](const std::pair<std::string, std::string>& element)
+                                             { return element.first == "RouteToken"; });
+                            if (routeTokenIt == params.end())
+                            {
+                                LOG_DBG("Adding routeToken[" << routeToken
+                                                             << "] as a parameter to requestUri["
+                                                             << requestUri.toString() << ']');
+
+                                requestUri.addQueryParameter("RouteToken", routeToken);
+                            }
+                            else
+                            {
+                                LOG_DBG("Updating routeToken[" << routeToken
+                                                               << "] parameter in requestUri["
+                                                               << requestUri.toString() << ']');
+
+                                routeTokenIt->second = routeToken;
+                                requestUri.setQueryParameters(params);
+                            }
+                        }
+
+                        ProxyRequestHandler::handleRequest(requestUri.getPathAndQuery(), socket,
+                                                           requestUri.getScheme() + "://" +
+                                                               requestUri.getAuthority(),
+                                                           message, request.getMethod());
+                    }
                 }
                 else
                 {

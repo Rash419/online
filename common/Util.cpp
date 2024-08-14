@@ -774,6 +774,13 @@ namespace Util
         hash.resize(std::min(8, (int)hash.length()));
     }
 
+    std::string getCoolVersionHash()
+    {
+        std::string hash(COOLWSD_VERSION_HASH);
+        hash.resize(std::min(8, (int)hash.length()));
+        return hash;
+    }
+
     const std::string& getProcessIdentifier()
     {
         static std::string id = Util::rng::getHexString(8);

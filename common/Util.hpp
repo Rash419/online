@@ -303,6 +303,9 @@ namespace Util
     /// Get version information
     void getVersionInfo(std::string& version, std::string& hash);
 
+    /// Returns the COOL Version Hash string.
+    std::string getCoolVersionHash();
+
     ///< A random hex string that identifies the current process.
     const std::string& getProcessIdentifier();
 
