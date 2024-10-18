@@ -26,6 +26,7 @@ class Mention extends L.Control.AutoCompletePopup {
 	users: any;
 	itemList: Array<Item>;
 	data: MessageEvent<any>;
+	debouceTimeoutId: NodeJS.Timeout;
 
 	constructor(map: ReturnType<typeof L.map>) {
 		super('mentionPopup', map);
@@ -61,6 +62,16 @@ class Mention extends L.Control.AutoCompletePopup {
 		const entries: any[] = [];
 		this.users = ev.data;
 		if (this.users === null) return entries;
+	sendMentionPostMsg(partialText: string) {
+		if (this.debouceTimeoutId) clearTimeout(this.debouceTimeoutId);
+
+		this.debouceTimeoutId = setTimeout(() => {
+			this.map.fire('postMessage', {
+				msgId: 'UI_Mention',
+				args: { type: 'autocomplete', text: partialText },
+			});
+		}, 300);
+	}
 
 		const text = this.map._docLayer._mentionText.join('').substring(1);
 		// filterout the users from list according to the text
